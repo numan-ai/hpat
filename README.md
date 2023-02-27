@@ -71,6 +71,7 @@ word `run` can be a verb or a noun, so it would look like this:
 <Word "run" [3]>, <Verb "run" [3]>, <Noun "run" [3]>, <Character "u" [1]>, <Letter "u" [1]>
 <Word "run" [3]>, <Verb "run" [3]>, <Noun "run" [3]>, <Character "n" [1]>, <Letter "n" [1]>
 ```
+Leter when we will have more context (`run as fast as you can`) we will be able to understand which part of speech it was, but we will still keep all the options in case new information will change our decision.
 
 ## Hierarchies
 In the example above we had "Sign" concept with two child concepts "Plus" and "Minus", it is possible to write your own hierarchy provider that will take information from outter source, for example from knowledge base:
