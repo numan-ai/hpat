@@ -33,9 +33,18 @@ class PatternNode:
     negate_value: bool = False
     # if False, sequence_idx won't change
     advance: bool = True
+    # requires to be in the start of text
+    at_start: bool = False
+    # requires to be in the end of text
+    at_end: bool = False
+    # if True, at_start will be carried over
+    many_start: bool = False
+    # if True, at_end will be carried over
+    # TODO: many end does not make sense
+    many_end: bool = False
 
-    def get_next_states(self, matches, state: MatchState, hierarchy: HierarchyProvider,
-                        origin: PatternNodeOrigin):
+    def get_next_states(self, matches, seq: DataSequence, state: MatchState,
+                        hierarchy: HierarchyProvider, origin: PatternNodeOrigin):
         next_states = []
 
         original_state = copy.deepcopy(state)
@@ -44,7 +53,7 @@ class PatternNode:
             if match.start_idx != state.sequence_idx:
                 continue
 
-            is_matching = self.is_matching(match, hierarchy)
+            is_matching = self.is_matching(match, seq, state, hierarchy)
             if self.negate:
                 is_matching = not is_matching
 
@@ -89,9 +98,25 @@ class PatternNode:
 
         return next_states
 
-    def is_matching(self, match: Match, hierarchy: HierarchyProvider = None) -> bool:
+    def is_matching(self, match: Match, seq: DataSequence,
+                    state: MatchState, hierarchy: HierarchyProvider = None) -> bool:
         """ State is matching if data element contains concept of the pattern.
         """
+        at_start = self.at_start
+        at_end = self.at_end
+
+        if state.many_optional:
+            # second+ many node
+            if not self.many_start:
+                at_start = False
+            if not self.many_end:
+                at_end = False
+
+        if at_start and match.start_idx != 0:
+            return False
+        if at_end and (match.start_idx + match.size) != len(seq.value):
+            return False
+
         matching_concepts = {match.concept, }
         if hierarchy is not None:
             matching_concepts.update(set(hierarchy.get_parents(match.concept)))
@@ -169,7 +194,7 @@ class Pattern:
             state.sequence_start_idx = state.sequence_idx
             state.sequence_end_idx = state.sequence_idx
 
-        return pattern_node.get_next_states(matches, state, hierarchy, node_origin)
+        return pattern_node.get_next_states(matches, seq, state, hierarchy, node_origin)
 
     def is_state_completed(self, state: MatchState) -> bool:
         """ Returns if the state is completed and can be saved to sequence"""
