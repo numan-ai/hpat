@@ -8,7 +8,7 @@ def _get_match_id():
     return str(uuid.uuid4())
 
 
-@dataclass(slots=True)
+@dataclass
 class Match:
     """ Describes match result"""
     concept: str
@@ -35,7 +35,7 @@ class Match:
         return not bool(set(self.depends_on_matches).difference(match_ids))
 
 
-@dataclass(slots=True)
+@dataclass
 class MatchAssumption:
     sequence_start_idx: int
     sequence_end_idx: int
@@ -43,7 +43,7 @@ class MatchAssumption:
     weight: float = 1.0
 
 
-@dataclass(slots=True)
+@dataclass
 class MatchState:
     """ Keeps state of matching progress
     Pattern matching is a process of generating matching states.

@@ -5,7 +5,7 @@ from typing import Optional
 from hpat.match import Match
 
 
-@dataclass(slots=True)
+@dataclass
 class DataElement:
     value: Optional[any] = None
     matches: list[Match] = field(default_factory=list)
@@ -31,7 +31,7 @@ class DataElement:
         return False
 
 
-@dataclass(slots=True)
+@dataclass
 class DataSequence:
     value: str
     elements: list[DataElement]
@@ -115,7 +115,7 @@ class DataSequence:
     def display(self):
         for node in self.elements:
             matches = sorted(node.matches, key=lambda x: (x.size, len(x.concept)), reverse=True)
-            print([repr(x) for x in matches])
+            print(', '.join([repr(x) for x in matches]))
 
     def to_list(self):
         result = []

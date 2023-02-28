@@ -18,7 +18,7 @@ class PatternNodeOrigin(enum.Enum):
     POST = enum.auto()
 
 
-@dataclass(slots=True)
+@dataclass
 class PatternNode:
     concept: Union[str, list[str]]
     value: any = None
@@ -147,7 +147,7 @@ class PatternNode:
         return self.optional or (self.many and state.many_optional)
 
 
-@dataclass(slots=True)
+@dataclass
 class Pattern:
     concept: str
     nodes: list[PatternNode]
