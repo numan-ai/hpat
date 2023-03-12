@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 
 from hpat.pattern import (
     Pattern,
 )
 from hpat.hierarchy import (
     HierarchyProvider,
+    DictHierarchyProvider,
 )
 from hpat.data_sequence import (
     DataSequence,
@@ -15,11 +16,15 @@ from hpat.match import (
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class Extractor:
-    patterns: list[Pattern]
+    patterns: List[Pattern]
     hierarchy: Optional[HierarchyProvider] = None
-    single_concepts: list[str] = field(default_factory=list)
+    single_concepts: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.hierarchy is None:
+            self.hierarchy = DictHierarchyProvider({})
 
     def apply_once(self, seq: DataSequence) -> bool:
         """ Applies a all patterns to a sequence ones
@@ -45,17 +50,17 @@ class Extractor:
 
         return had_new_matches
 
-    @staticmethod
-    def check_inside_start_idx(seq, idx, inside_concept):
+    def check_inside_start_idx(self, seq, idx, inside_concept):
         for match in seq.elements[idx].matches:
-            if match.concept == inside_concept:
+            if inside_concept == match.concept or \
+                    inside_concept in self.hierarchy.get_parents(match.concept):
                 return True
         return False
 
-    @staticmethod
-    def check_match_is_inside(seq, match, inside_concept):
+    def check_match_is_inside(self, seq, match, inside_concept):
         for other in seq.elements[match.start_idx].matches:
-            if other.concept == inside_concept and \
+            if (inside_concept == other.concept or
+                inside_concept in self.hierarchy.get_parents(other.concept)) and \
                     other.start_idx == match.start_idx and \
                     other.size == match.size:
                 return True

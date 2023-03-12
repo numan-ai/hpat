@@ -2,6 +2,7 @@ import copy
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
+from typing import List, Dict
 
 
 def _get_match_id():
@@ -19,10 +20,16 @@ class Match:
     # is this match a result of an assumption
     assumed: bool = False
     # in case match depends on non-confirmed matches,
-    # we want to deleted it if matches are invalidated
-    depends_on_matches: list[str] = field(default_factory=list)
-    extractions: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list), repr=False)
+    # we want to deleted it if matches are invalidated.
+    # this only contains direct dependencies, use get_all_dependencies
+    # to get all of them
+    depends_on_matches: List[str] = field(default_factory=list)
+    extractions: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list), repr=False)
     weight: float = 1
+
+    @property
+    def end_idx(self):
+        return self.start_idx + self.size
 
     def __repr__(self):
         weight_str = ""
@@ -33,6 +40,17 @@ class Match:
     def dependencies_present(self, seq):
         match_ids = seq.get_all_match_ids()
         return not bool(set(self.depends_on_matches).difference(match_ids))
+
+    def get_all_dependencies(self, seq):
+        """ Returns recursive match ids that this match depends on"""
+        result = []
+
+        for dependency_id in self.depends_on_matches:
+            result.append(dependency_id)
+            dependency = seq.match_by_id[dependency_id]
+            result.extend(dependency.get_all_dependencies(seq))
+
+        return sorted(list(set(result)))
 
 
 @dataclass
@@ -59,9 +77,9 @@ class MatchState:
     sequence_end_idx: int = None
     many_optional: bool = False
     # {kb_node_id: [val1, val2]}
-    extractions: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list), repr=False)
-    assumptions: list['MatchAssumption'] = field(default_factory=list, repr=False)
-    depends_on_matches: list[str] = field(default_factory=list, repr=False)
+    extractions: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list), repr=False)
+    assumptions: List['MatchAssumption'] = field(default_factory=list, repr=False)
+    depends_on_matches: List[str] = field(default_factory=list, repr=False)
 
     def get_next(self,
                  next_pattern: bool = True,

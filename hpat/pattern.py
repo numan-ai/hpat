@@ -1,7 +1,7 @@
 import copy
 import enum
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional, Union, List, Tuple
 
 from hpat.data_sequence import DataSequence
 from hpat.hierarchy import HierarchyProvider
@@ -20,7 +20,7 @@ class PatternNodeOrigin(enum.Enum):
 
 @dataclass
 class PatternNode:
-    concept: Union[str, list[str]]
+    concept: Union[str, List[str]]
     value: any = None
     optional: bool = False
     many: bool = False
@@ -150,9 +150,9 @@ class PatternNode:
 @dataclass
 class Pattern:
     concept: str
-    nodes: list[PatternNode]
-    pre: list[PatternNode] = field(default_factory=list)
-    post: list[PatternNode] = field(default_factory=list)
+    nodes: List[PatternNode]
+    pre: List[PatternNode] = field(default_factory=list)
+    post: List[PatternNode] = field(default_factory=list)
     id: Optional[str] = None
     # requires pattern to match inside specified concepts,
     # must cover them start-to-end
@@ -160,7 +160,7 @@ class Pattern:
     weight: float = 1.0
 
     def match(self, seq: DataSequence, state: MatchState,
-              hierarchy: HierarchyProvider = None) -> list[Match]:
+              hierarchy: HierarchyProvider = None) -> List[Match]:
         next_states = [state]
         matches = []
 
@@ -179,9 +179,9 @@ class Pattern:
         return matches
 
     def get_next_states(self, seq: DataSequence, state: MatchState,
-                        hierarchy: HierarchyProvider) -> list[MatchState]:
+                        hierarchy: HierarchyProvider) -> List[MatchState]:
         try:
-            matches: list[Match] = seq.elements[state.sequence_idx].matches
+            matches: List[Match] = seq.elements[state.sequence_idx].matches
             pattern_node, node_origin = self.get_node(state.pattern_idx)
         except IndexError:
             return []
@@ -202,7 +202,7 @@ class Pattern:
             return False
         return True
 
-    def get_node(self, node_idx) -> tuple[PatternNode, PatternNodeOrigin]:
+    def get_node(self, node_idx) -> Tuple[PatternNode, PatternNodeOrigin]:
         """ This is introduced in case of nested pattern nodes (in groups),
         """
         len_pre = len(self.pre)

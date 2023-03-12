@@ -4,7 +4,7 @@ Library to match hierarchical patterns in sequences with regexp-like patterns.
 Currently library is for text pattern matching but with some tweaks it is possible to match any sequences.
 
 ## Requirements and installation
-This library requires Python3.9+.  
+This library requires Python3.7+.  
 There are no other requirements or dependencies.  
 Install by clonning this repo and running  
 `python -m pip install .` inside the directory with the project.  

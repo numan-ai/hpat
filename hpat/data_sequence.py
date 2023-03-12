@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List, Dict, Tuple, Set
 
 from hpat.match import Match
 
@@ -8,7 +8,7 @@ from hpat.match import Match
 @dataclass
 class DataElement:
     value: Optional[any] = None
-    matches: list[Match] = field(default_factory=list)
+    matches: List[Match] = field(default_factory=list)
 
     def contains_match(self, match: Match) -> bool:
         for saved in self.matches:
@@ -34,10 +34,10 @@ class DataElement:
 @dataclass
 class DataSequence:
     value: str
-    elements: list[DataElement]
-    extractions: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
+    elements: List[DataElement]
+    extractions: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
     consolidated: bool = False
-    match_by_id: dict[str, Match] = field(default_factory=dict)
+    match_by_id: Dict[str, Match] = field(default_factory=dict)
 
     def __post_init__(self):
         for ele in self.elements:
@@ -84,7 +84,7 @@ class DataSequence:
                     to_remove.append(match)
 
             for match in to_remove:
-                del self.match_by_id[match.id]
+                self.match_by_id.pop(match.id, None)
                 node.matches.remove(match)
 
         for match_id in to_revoke:
@@ -112,10 +112,16 @@ class DataSequence:
 
         self.consolidated = True
 
-    def display(self):
+    def display(self, hide=None):
+        if hide is None:
+            hide = set()
+
         for node in self.elements:
             matches = sorted(node.matches, key=lambda x: (x.size, len(x.concept)), reverse=True)
-            print(', '.join([repr(x) for x in matches]))
+            to_display = [repr(x) for x in matches if x.concept not in hide]
+            if not to_display:
+                to_display = [repr(x) for x in matches if x.concept == 'Character']
+            print(', '.join(to_display))
 
     def to_list(self):
         result = []
@@ -142,7 +148,7 @@ class DataSequence:
             ]
         )
 
-    def get_all_match_ids(self) -> set[str]:
+    def get_all_match_ids(self) -> Set[str]:
         match_ids = set()
 
         for elem in self.elements:
@@ -155,7 +161,7 @@ class DataSequence:
         """ Returns number of dependant matches"""
         return len(self.get_dependant_matches(match_id))
 
-    def get_dependant_matches(self, match_id) -> set[str]:
+    def get_dependant_matches(self, match_id) -> Set[str]:
         deps = set()
 
         for elem in self.elements:
@@ -166,7 +172,7 @@ class DataSequence:
 
         return deps
 
-    def get_slots(self, concept: str) -> list[tuple[int, int]]:
+    def get_slots(self, concept: str) -> List[Tuple[int, int]]:
         """ Returns slots (positions) for a given concept,
         slot is a tuple of (start_idx, end_idx).
         """
@@ -180,3 +186,18 @@ class DataSequence:
                 result.append((match.start_idx, match.start_idx + match.size))
 
         return result
+
+    def clean_matches(self, main_match: Match):
+        matches_to_remove = self.get_all_match_ids() - set(main_match.get_all_dependencies(self))
+        matches_to_remove.remove(main_match.id)
+        start = main_match.start_idx
+        end = main_match.end_idx
+        for match_id in matches_to_remove:
+            if match_id not in self.match_by_id:
+                continue
+            match = self.match_by_id[match_id]
+            if not (match.start_idx >= start and match.end_idx <= end):
+                continue
+            if self.match_by_id[match_id].concept == 'Character':
+                continue
+            self.revoke_match(match_id)
