@@ -23,7 +23,7 @@ def main():
         Pattern("Dot", [
             PatternNode("Character", value=".")]),
         Pattern("Letter", [PatternNode("Character", list(string.ascii_letters))]),
-        Pattern("SentenceEnd", [PatternNode("Character", ["!", "?", "."])]),
+        Pattern("SentenceEnd", [PatternNode("Character", ["!", "?", ".", ";"])]),
         Pattern("WordSeparator",
                 [PatternNode("Character", list(string.ascii_letters), negate_value=True)]),
         Pattern("Word",
