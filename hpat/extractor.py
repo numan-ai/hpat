@@ -16,7 +16,7 @@ from hpat.match import (
 )
 
 
-@dataclass(slots=True)
+@dataclass
 class Extractor:
     patterns: List[Pattern]
     hierarchy: Optional[HierarchyProvider] = None
