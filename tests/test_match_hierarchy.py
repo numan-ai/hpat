@@ -10,7 +10,7 @@ from hpat import (
 def test_dict_hierarchy_provider():
     seq = DataSequence.from_string("1+1")
 
-    hierarchy = DictHierarchyProvider({
+    hierarchy = DictHierarchyProvider(parents={
         "Plus": ["Sign"],
     })
 

@@ -24,7 +24,7 @@ def test_single_concept():
             PatternNode("Noun"),
             PatternNode("Word", "is"),
         ]),
-    ], DictHierarchyProvider({
+    ], DictHierarchyProvider(parents={
         "Verb": ["PartOfSpeech"],
         "Noun": ["PartOfSpeech"],
     }), single_concepts=[

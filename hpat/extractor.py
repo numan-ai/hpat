@@ -24,7 +24,7 @@ class Extractor:
 
     def __post_init__(self):
         if self.hierarchy is None:
-            self.hierarchy = DictHierarchyProvider({})
+            self.hierarchy = DictHierarchyProvider(children={})
 
     def apply_once(self, seq: DataSequence) -> bool:
         """ Applies a all patterns to a sequence ones
@@ -33,6 +33,8 @@ class Extractor:
         had_new_matches = False
 
         for start_idx in range(len(seq.elements)):
+            if seq.elements[start_idx].disabled:
+                continue
             for pattern in self.patterns:
                 if pattern.inside and not \
                         self.check_inside_start_idx(seq, start_idx, pattern.inside):

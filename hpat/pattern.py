@@ -80,6 +80,11 @@ class PatternNode:
                 ))
 
             new_state = state.get_next(element_advancement=element_advancement)
+            if self.id:
+                if match.structure:
+                    new_state.add_data(self.id, copy.deepcopy(match.structure), many=self.many)
+                else:
+                    new_state.add_data(self.id, copy.deepcopy(match.value), many=self.many)
 
             new_state.depends_on_matches.append(match.id)
             next_states.append(new_state)
@@ -89,6 +94,11 @@ class PatternNode:
                                            many_optional=True)
                 new_state.depends_on_matches.append(match.id)
                 next_states.append(new_state)
+                if self.id:
+                    if match.structure:
+                        new_state.add_data(self.id, copy.deepcopy(match.structure), many=self.many)
+                    else:
+                        new_state.add_data(self.id, copy.deepcopy(match.value), many=self.many)
 
         state = original_state
 
@@ -182,13 +192,18 @@ class Pattern:
                         hierarchy: HierarchyProvider) -> List[MatchState]:
         try:
             matches: List[Match] = seq.elements[state.sequence_idx].matches
+            # this line should go before the "disabled" check, so that
+            # we don't return "new_state" if there is no next pattern node
             pattern_node, node_origin = self.get_node(state.pattern_idx)
+
+            if seq.elements[state.sequence_idx].disabled:
+                new_state = copy.deepcopy(state)
+                new_state.sequence_idx += 1
+                if new_state.sequence_end_idx is not None:
+                    new_state.sequence_end_idx += 1
+                return [new_state, ]
         except IndexError:
             return []
-
-        # if 'Word' in [m.concept for m in seq.elements[1].matches]:
-        #     if self.concept == 'Noun':
-        #         breakpoint()
 
         if node_origin is PatternNodeOrigin.BODY and state.sequence_start_idx is None:
             state.sequence_start_idx = state.sequence_idx

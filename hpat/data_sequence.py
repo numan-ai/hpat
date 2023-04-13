@@ -9,6 +9,7 @@ from hpat.match import Match
 class DataElement:
     value: Optional[any] = None
     matches: List[Match] = field(default_factory=list)
+    disabled: bool = False
 
     def contains_match(self, match: Match) -> bool:
         for saved in self.matches:
@@ -18,8 +19,9 @@ class DataElement:
                 continue
             if saved.start_idx != match.start_idx:
                 continue
-            # if saved.depends_on_matches != match.depends_on_matches:
-            #     continue
+            # TODO: we need a better way of specifying concepts that can be duplicated
+            if match.concept in {'Sentence', 'MakesSense'} and saved.depends_on_matches != match.depends_on_matches:
+                continue
 
             return True
         return False
@@ -38,6 +40,10 @@ class DataSequence:
     extractions: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
     consolidated: bool = False
     match_by_id: Dict[str, Match] = field(default_factory=dict)
+
+    @property
+    def size(self):
+        return len(self.elements)
 
     def __post_init__(self):
         for ele in self.elements:
@@ -69,7 +75,7 @@ class DataSequence:
                 self.match_by_id[match.id] = match
         return added_new_match
 
-    def revoke_match(self, match_id: str):
+    def revoke_match(self, match_id: str, cascade: bool = True):
         """ Removes match by its id and all matches that depend on it
         This may happen when an assumed match was invalidated.
         """
@@ -87,8 +93,9 @@ class DataSequence:
                 self.match_by_id.pop(match.id, None)
                 node.matches.remove(match)
 
-        for match_id in to_revoke:
-            self.revoke_match(match_id)
+        if cascade:
+            for match_id in to_revoke:
+                self.revoke_match(match_id)
 
     def consolidate(self):
         """ Takes all matches and finds all extractions """
@@ -138,6 +145,23 @@ class DataSequence:
             raise Exception("Must consolidate first")
         return self.extractions.get(pattern_node_id, [])
 
+    def disable_elements(self, concepts):
+        if isinstance(concepts, str):
+            concepts = [concepts, ]
+        for elem in self.elements:
+            for match in elem.matches:
+                if match.concept in concepts:
+                    elem.disabled = True
+                    break
+
+    def find_dependant_matches(self, match_id):
+        result = []
+        for element in self.elements:
+            for match in element.matches:
+                if match_id in match.depends_on_matches:
+                    result.append(match.id)
+        return sorted(list(set(result)))
+
     @classmethod
     def from_string(cls, text):
         return cls(
@@ -172,7 +196,7 @@ class DataSequence:
 
         return deps
 
-    def get_slots(self, concept: str) -> List[Tuple[int, int]]:
+    def get_slots(self, concept: str, hierarchy=None) -> List[Tuple[int, int]]:
         """ Returns slots (positions) for a given concept,
         slot is a tuple of (start_idx, end_idx).
         """
@@ -181,13 +205,18 @@ class DataSequence:
             for match in elem.matches:
                 if match.start_idx != idx:
                     continue
-                if match.concept != concept:
+                if hierarchy is None and match.concept != concept:
                     continue
+                elif hierarchy is not None and concept not in hierarchy.get_parents(match.concept) \
+                        and match.concept != concept:
+                    continue
+
                 result.append((match.start_idx, match.start_idx + match.size))
 
         return result
 
-    def clean_matches(self, main_match: Match):
+    def clean_matches(self, main_match_id: str):
+        main_match = self.match_by_id[main_match_id]
         matches_to_remove = self.get_all_match_ids() - set(main_match.get_all_dependencies(self))
         matches_to_remove.remove(main_match.id)
         start = main_match.start_idx
@@ -201,3 +230,36 @@ class DataSequence:
             if self.match_by_id[match_id].concept == 'Character':
                 continue
             self.revoke_match(match_id)
+
+    def keep_only(self, concepts: list[str], hierarchy=None):
+        matches_to_remove = set()
+        for idx, elem in enumerate(self.elements):
+            for match in elem.matches:
+                if match.start_idx != idx:
+                    continue
+                if match.concept in concepts:
+                    continue
+                if hierarchy:
+                    parents = hierarchy.get_parents(match.concept)
+                    if set(parents).intersection(set(concepts)):
+                        continue
+                matches_to_remove.add(match.id)
+
+        for match_id in matches_to_remove:
+            self.revoke_match(match_id, cascade=False)
+
+    def drop_matches(self, concepts: list[str], hierarchy=None, cascade=False):
+        matches_to_remove = set()
+        for idx, elem in enumerate(self.elements):
+            for match in elem.matches:
+                if match.start_idx != idx:
+                    continue
+                if match.concept in concepts:
+                    matches_to_remove.add(match.id)
+                elif hierarchy:
+                    parents = hierarchy.get_parents(match.concept)
+                    if set(parents).intersection(set(concepts)):
+                        matches_to_remove.add(match.id)
+
+        for match_id in matches_to_remove:
+            self.revoke_match(match_id, cascade=False)

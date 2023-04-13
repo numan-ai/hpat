@@ -25,6 +25,7 @@ class Match:
     # to get all of them
     depends_on_matches: List[str] = field(default_factory=list)
     extractions: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list), repr=False)
+    structure: Dict[str, any] = field(default_factory=dict)
     weight: float = 1
 
     @property
@@ -47,10 +48,17 @@ class Match:
 
         for dependency_id in self.depends_on_matches:
             result.append(dependency_id)
-            dependency = seq.match_by_id[dependency_id]
+            try:
+                dependency = seq.match_by_id[dependency_id]
+            except KeyError:
+                continue
             result.extend(dependency.get_all_dependencies(seq))
 
         return sorted(list(set(result)))
+
+    @property
+    def slot(self):
+        return self.start_idx, self.start_idx + self.size
 
 
 @dataclass
@@ -80,6 +88,16 @@ class MatchState:
     extractions: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list), repr=False)
     assumptions: List['MatchAssumption'] = field(default_factory=list, repr=False)
     depends_on_matches: List[str] = field(default_factory=list, repr=False)
+    structure: Dict[str, any] = field(default_factory=dict, repr=False)
+
+    def add_data(self, key, value, many=False):
+        if many:
+            if key in self.structure:
+                self.structure[key].append(value)
+            else:
+                self.structure[key] = [value]
+        else:
+            self.structure[key] = value
 
     def get_next(self,
                  next_pattern: bool = True,
@@ -94,12 +112,20 @@ class MatchState:
             extractions=copy.deepcopy(self.extractions),
             assumptions=copy.copy(self.assumptions),
             depends_on_matches=copy.copy(self.depends_on_matches),
+            structure=copy.deepcopy(self.structure),
         )
 
     def get_matches(self, seq, concept, weight):
         for match_id in self.depends_on_matches:
             match = seq.match_by_id[match_id]
             weight = min(weight, match.weight)
+
+        structure = {}
+        if self.structure:
+            structure = {
+                "concept": concept,
+                "data": copy.deepcopy(self.structure),
+            }
 
         matches = []
         main_match = Match(
@@ -111,6 +137,7 @@ class MatchState:
             depends_on_matches=self.depends_on_matches.copy(),
             extractions=copy.deepcopy(self.extractions),
             weight=weight,
+            structure=structure
         )
         matches.append(main_match)
 

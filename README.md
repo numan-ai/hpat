@@ -78,9 +78,8 @@ extractor = Extractor([
         PatternNode("Space", optional=True),
         PatternNode("Number"),
     ]),
-], DictHierarchyProvider({
-    'Plus': ['Sign',],
-    'Minus': ['Sign',],
+], DictHierarchyProvider(children={
+    'Sign': ['Plus', 'Minus'],
 }))
 
 extractor.apply(seq)
