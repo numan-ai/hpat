@@ -9,7 +9,7 @@ def _get_match_id():
     return str(uuid.uuid4())
 
 
-@dataclass
+@dataclass(slots=True)
 class Match:
     """ Describes match result"""
     concept: str
@@ -69,7 +69,7 @@ class MatchAssumption:
     weight: float = 1.0
 
 
-@dataclass
+@dataclass(slots=True)
 class MatchState:
     """ Keeps state of matching progress
     Pattern matching is a process of generating matching states.
@@ -93,19 +93,28 @@ class MatchState:
     def add_data(self, key, value, many=False):
         if many:
             if key in self.structure:
+                # in case of two fields with the same id
+                # and first one is not 'many'
+                if not isinstance(self.structure[key], list):
+                    self.structure[key] = [self.structure[key]]
                 self.structure[key].append(value)
             else:
                 self.structure[key] = [value]
         else:
-            self.structure[key] = value
+            if key in self.structure:
+                if not isinstance(self.structure[key], list):
+                    self.structure[key] = [self.structure[key]]
+                self.structure[key].append(value)
+            else:
+                self.structure[key] = value
 
     def get_next(self,
-                 next_pattern: bool = True,
+                 next_pattern: int = 1,
                  element_advancement: int = 1,
                  many_optional: bool = False) -> 'MatchState':
         return MatchState(
             sequence_idx=self.sequence_idx + element_advancement,
-            pattern_idx=(self.pattern_idx + 1) if next_pattern else self.pattern_idx,
+            pattern_idx=self.pattern_idx + next_pattern,
             sequence_start_idx=self.sequence_start_idx,
             sequence_end_idx=self.sequence_end_idx,
             many_optional=many_optional,

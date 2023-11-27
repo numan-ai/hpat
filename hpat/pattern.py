@@ -108,7 +108,7 @@ class PatternNode:
 
         return next_states
 
-    def is_matching(self, match: Match, seq: DataSequence,
+    def is_matching(self, match: Match, seq: DataSequence | None,
                     state: MatchState, hierarchy: HierarchyProvider = None) -> bool:
         """ State is matching if data element contains concept of the pattern.
         """
@@ -168,6 +168,7 @@ class Pattern:
     # must cover them start-to-end
     inside: Optional[str] = None
     weight: float = 1.0
+    rules: list = field(default_factory=list)
 
     def match(self, seq: DataSequence, state: MatchState,
               hierarchy: HierarchyProvider = None) -> List[Match]:

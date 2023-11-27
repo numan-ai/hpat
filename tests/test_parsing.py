@@ -57,6 +57,33 @@ def test_parsing_many():
     }
 
 
+def test_parsing_same_id():
+    seq = DataSequence.from_string("1 + 23")
+    extractor = Extractor([
+        Pattern("Digit", [PatternNode("Character", list("0123456789"))]),
+        Pattern("Sign", [PatternNode("Character", ["+", "-"])]),
+        Pattern("Space", [PatternNode("Character", " ")]),
+        Pattern("MathExpr", [
+            PatternNode("Digit", id='digits'),
+            PatternNode("Space"),
+            PatternNode("Sign", id='op'),
+            PatternNode("Space"),
+            PatternNode("Digit", id='digits', many=True),
+        ]),
+    ])
+
+    extractor.apply(seq)
+    match = seq.elements[0].matches[-1]
+
+    assert match.structure == {
+        "concept": "MathExpr",
+        "data": {
+            "digits": ["1", "2", "3"],
+            "op": "+",
+        },
+    }
+
+
 def test_parsing_nested():
     seq = DataSequence.from_string("1 + 23")
     extractor = Extractor([
